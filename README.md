@@ -557,12 +557,65 @@ project/
 ├── database/
 │   ├── schema.sql                 # Main database schema
 │   ├── migrate_photo_url.sql      # Profile picture migration
-│   └── add_ai_recommendations_table.sql
+│   ├── add_ai_recommendations_table.sql
+│   └── add_logs_table.sql         # Activity logs table
 ├── public/                        # Static assets
 ├── next.config.ts                 # Next.js configuration
 ├── tailwind.config.ts             # Tailwind configuration
 ├── tsconfig.json                  # TypeScript configuration
 └── package.json                   # Dependencies
+```
+
+## Activity Logging System
+
+FinanceFlow includes a comprehensive activity logging system that tracks all user actions for security, auditing, and debugging purposes.
+
+### Features
+
+- **Complete Activity Tracking**: Logs all user actions including:
+  - Authentication (login, logout, signup, Google OAuth)
+  - Expense management (create, update, delete)
+  - Budget changes
+  - Income management
+  - Category management
+  - Profile updates (name, currency, avatar)
+  - AI recommendation generation and management
+  - Page views (settings, logs, dashboard)
+
+- **Detailed Metadata**: Each log entry includes:
+  - Action type and description
+  - Entity type and ID (if applicable)
+  - Before/after values for updates
+  - IP address and user agent
+  - Timestamp
+  - Additional metadata in JSON format
+
+- **Beautiful Logs Page**: 
+  - Accessible from Settings page
+  - Date range filtering
+  - Action type filtering
+  - Infinite scroll for efficient loading
+  - Responsive card-based layout
+  - Expandable metadata details
+
+- **Automatic Cleanup**: 
+  - Logs older than 30 days are automatically deleted
+  - Cleanup runs periodically (1% of log requests)
+  - Manual cleanup endpoint available
+  - Cron endpoint for scheduled cleanup
+
+### Setting Up Automated Cleanup
+
+For production, set up a daily cron job to clean up old logs:
+
+```bash
+# Add to crontab (runs daily at 2 AM)
+0 2 * * * curl -H "Authorization: Bearer YOUR_CRON_SECRET" https://yourapp.com/api/logs/cron
+```
+
+Or add `CRON_SECRET` to your `.env.local`:
+```env
+CRON_SECRET=your-secret-token-for-cron
 ```
 
 ## Key Features Explained
@@ -704,10 +757,6 @@ Ensure all environment variables are set:
 - Add tests for new features
 - Update documentation
 - Ensure code passes linting
-
-## License
-
-This project is private and proprietary.
 
 ---
 
