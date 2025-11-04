@@ -711,4 +711,4 @@ This project is private and proprietary.
 
 ---
 
-**Built with ❤️ using Next.js, MySQL, and Google AI**
+**Built with ❤️ using Next.js, MySQL**
