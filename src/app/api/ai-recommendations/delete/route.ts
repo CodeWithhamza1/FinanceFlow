@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // POST - Delete an AI recommendation
 export async function POST(request: NextRequest) {
@@ -28,9 +29,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify recommendation belongs to user
+    // Verify recommendation belongs to user and get details
     const existing = await query(
-      'SELECT id FROM ai_recommendations WHERE id = ? AND user_id = ?',
+      'SELECT id, title FROM ai_recommendations WHERE id = ? AND user_id = ?',
       [recommendationId, auth.userId]
     ) as any[];
 
@@ -41,10 +42,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const recommendation = existing[0];
+
     await query(
       'DELETE FROM ai_recommendations WHERE id = ? AND user_id = ?',
       [recommendationId, auth.userId]
     );
+
+    // Log AI recommendation deletion
+    await logActivity(auth.userId, {
+      action: LogActions.AI_RECOMMENDATION_DELETE,
+      entityType: 'ai_recommendation',
+      entityId: recommendationId.toString(),
+      description: `Deleted AI recommendation${recommendation.title ? `: ${recommendation.title}` : ''}`,
+      metadata: {
+        title: recommendation.title || null,
+      },
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error) {

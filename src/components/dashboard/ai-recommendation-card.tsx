@@ -27,6 +27,7 @@ import { formatCurrency } from "../../lib/currency-utils";
 import { useAuth } from "../../contexts/auth-context";
 import api from "../../lib/api";
 import { MarkdownRenderer } from "../ui/markdown-renderer";
+import { LogActions } from "../../lib/log-actions";
 
 interface AiRecommendationCardProps {
   income: number;
@@ -145,6 +146,24 @@ export default function AiRecommendationCard({
         recentExpenses: formattedRecentExpenses.length > 0 ? formattedRecentExpenses : undefined,
       });
       setRecommendation(result.recommendations);
+
+      // Log AI recommendation generation (client-side, will be logged via API if needed)
+      try {
+        await api.post('/api/logs', {
+          action: LogActions.AI_RECOMMENDATION_GENERATE,
+          description: `Generated AI budget recommendation`,
+          metadata: {
+            income,
+            savingsGoal,
+            totalExpenses,
+            balance,
+            categoriesCount: Object.keys(expenses).length,
+          },
+        });
+      } catch (e) {
+        // Silently fail - logging should not break the app
+        console.error('Failed to log AI recommendation generation:', e);
+      }
     } catch (error: any) {
       console.error("AI Recommendation Error:", error);
       
@@ -170,7 +189,7 @@ export default function AiRecommendationCard({
     setIsSaving(true);
     try {
       await api.post('/api/ai-recommendations', {
-        title: saveTitle || `AI Recommendation - ${new Date().toLocaleDateString()}`,
+        title: saveTitle || `AI Recommendation - ${new Date().toISOString().split('T')[0]}`,
         recommendation,
         income,
         savingsGoal,

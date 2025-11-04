@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // GET - Fetch user's budgets
 export async function GET(request: NextRequest) {
@@ -47,6 +48,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get old budgets for logging
+    const oldBudgets = await query(
+      'SELECT category, amount FROM budgets WHERE user_id = ?',
+      [auth.userId]
+    ) as any[];
+
     // Delete existing budgets
     await query('DELETE FROM budgets WHERE user_id = ?', [auth.userId]);
 
@@ -57,6 +64,18 @@ export async function POST(request: NextRequest) {
         [auth.userId, budget.category, budget.amount]
       );
     }
+
+    // Log budget update
+    await logActivity(auth.userId, {
+      action: LogActions.BUDGET_SET,
+      entityType: 'budgets',
+      description: `Updated budgets: ${budgets.length} categories set`,
+      metadata: {
+        oldBudgets: oldBudgets.map(b => ({ category: b.category, amount: parseFloat(b.amount) })),
+        newBudgets: budgets,
+        count: budgets.length,
+      },
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error) {

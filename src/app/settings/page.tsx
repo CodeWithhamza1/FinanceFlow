@@ -15,7 +15,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '../../hooks/use-toast';
-import { Loader2, Camera, X } from 'lucide-react';
+import { Loader2, Camera, X, FileText } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
@@ -53,6 +53,12 @@ export default function SettingsPage() {
       setDisplayName(user.displayName || '');
       setCurrency(user.currency || 'USD');
       setPreviewImage(null); // Reset preview when user changes
+      
+      // Log settings page view
+      api.post('/api/logs', {
+        action: 'SETTINGS_VIEW',
+        description: 'Viewed settings page',
+      }).catch(() => {}); // Silently fail
     }
   }, [user]);
 
@@ -208,6 +214,9 @@ export default function SettingsPage() {
             </Link>
             <Link href="#categories" className="font-semibold text-primary">
               Categories
+            </Link>
+            <Link href="/logs" className="font-semibold text-primary flex items-center gap-2">
+              Activity Logs
             </Link>
           </nav>
           <div className="grid gap-6">

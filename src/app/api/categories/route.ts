@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // GET - Fetch user's categories
 export async function GET(request: NextRequest) {
@@ -53,9 +54,23 @@ export async function POST(request: NextRequest) {
       [auth.userId, name, icon]
     ) as any;
 
+    const categoryId = result.insertId.toString();
+
+    // Log category creation
+    await logActivity(auth.userId, {
+      action: LogActions.CATEGORY_CREATE,
+      entityType: 'category',
+      entityId: categoryId,
+      description: `Created category: ${name} (${icon})`,
+      metadata: {
+        name,
+        icon,
+      },
+    }, request);
+
     return NextResponse.json(
       {
-        id: result.insertId.toString(),
+        id: categoryId,
         name,
         icon,
       },

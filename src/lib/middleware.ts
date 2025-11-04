@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './auth';
+import { verifyToken } from '@/lib/auth';
 
 export interface AuthenticatedRequest extends NextRequest {
   userId?: number;

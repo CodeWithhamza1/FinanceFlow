@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions, getRequestInfo } from '@/lib/logger';
 
 // Simple POST route for updating expenses (alternative to PUT)
 export async function POST(request: NextRequest) {
@@ -45,10 +46,37 @@ export async function POST(request: NextRequest) {
       dateToStore = new Date();
     }
 
+    // Get old values for logging
+    const oldExpense = await query(
+      'SELECT description, amount, category, date FROM expenses WHERE id = ? AND user_id = ?',
+      [expenseId, auth.userId]
+    ) as any[];
+
     await query(
       'UPDATE expenses SET description = ?, amount = ?, category = ?, date = ? WHERE id = ? AND user_id = ?',
       [description, amount, category, dateToStore, expenseId, auth.userId]
     );
+
+    // Log expense update
+    await logActivity(auth.userId, {
+      action: LogActions.EXPENSE_UPDATE,
+      entityType: 'expense',
+      entityId: expenseId.toString(),
+      description: `Updated expense: ${description} (${category}) - $${amount.toFixed(2)}`,
+      metadata: {
+        old: oldExpense[0] ? {
+          description: oldExpense[0].description,
+          amount: parseFloat(oldExpense[0].amount),
+          category: oldExpense[0].category,
+        } : null,
+        new: {
+          description,
+          amount,
+          category,
+          date,
+        },
+      },
+    }, request);
 
     const updated = await query(
       'SELECT id, user_id as userId, description, amount, category, date, created_at as createdAt FROM expenses WHERE id = ?',

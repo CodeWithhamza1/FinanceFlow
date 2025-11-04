@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { comparePassword, generateToken } from '@/lib/auth';
+import { logActivity, LogActions } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,6 +49,21 @@ export async function POST(request: NextRequest) {
     const token = generateToken({
       userId: user.id,
       email: user.email,
+    });
+
+    // Log login activity
+    await logActivity(user.id, {
+      action: LogActions.LOGIN,
+      description: `User logged in: ${user.email}`,
+      metadata: {
+        email: user.email,
+        displayName: user.display_name,
+      },
+    }, {
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+      headers: {
+        'user-agent': request.headers.get('user-agent') || undefined,
+      },
     });
 
     return NextResponse.json({

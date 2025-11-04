@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { generateToken } from '@/lib/auth';
 import { defaultCategories, initialBudgets } from '@/lib/data';
+import { logActivity, LogActions } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,6 +71,20 @@ export async function POST(request: NextRequest) {
       userId,
       email,
     });
+
+    // Log Google sign-in
+    await logActivity(userId, {
+      action: isNewUser ? LogActions.SIGNUP : LogActions.GOOGLE_SIGNIN,
+      description: isNewUser 
+        ? `New user registered via Google: ${email}`
+        : `User signed in via Google: ${email}`,
+      metadata: {
+        email,
+        displayName: displayName || null,
+        provider: 'google',
+        isNewUser,
+      },
+    }, request);
 
     const user = isNewUser
       ? { id: userId, email, displayName: displayName || null, photoURL: photoURL || null, currency: 'USD' }

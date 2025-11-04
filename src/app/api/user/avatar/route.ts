@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // POST - Upload profile picture
 export async function POST(request: NextRequest) {
@@ -71,6 +72,19 @@ export async function POST(request: NextRequest) {
         console.error(`Warning: Data may have been truncated! Original: ${originalLength}, Saved: ${savedLength}`);
       }
     }
+
+    // Log avatar upload
+    await logActivity(auth.userId, {
+      action: LogActions.AVATAR_UPLOAD,
+      entityType: 'user',
+      entityId: auth.userId.toString(),
+      description: `Uploaded profile picture (${(file.size / 1024).toFixed(2)} KB)`,
+      metadata: {
+        fileSize: file.size,
+        fileType: file.type,
+        fileName: file.name,
+      },
+    }, request);
 
     const users = await query(
       'SELECT id, email, display_name, photo_url, currency FROM users WHERE id = ?',

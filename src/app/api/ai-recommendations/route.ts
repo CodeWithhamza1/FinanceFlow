@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // GET - Fetch user's saved AI recommendations
 export async function GET(request: NextRequest) {
@@ -63,6 +64,22 @@ export async function POST(request: NextRequest) {
         expensesSummary ? JSON.stringify(expensesSummary) : null,
       ]
     ) as any;
+
+    const recommendationId = result.insertId.toString();
+
+    // Log AI recommendation save
+    await logActivity(auth.userId, {
+      action: LogActions.AI_RECOMMENDATION_SAVE,
+      entityType: 'ai_recommendation',
+      entityId: recommendationId,
+      description: `Saved AI recommendation${title ? `: ${title}` : ''}`,
+      metadata: {
+        title: title || null,
+        income: income || null,
+        savingsGoal: savingsGoal || null,
+        recommendationLength: recommendation.length,
+      },
+    }, request);
 
     const inserted = await query(
       'SELECT id, title, recommendation, income, savings_goal, expenses_summary, created_at FROM ai_recommendations WHERE id = ?',

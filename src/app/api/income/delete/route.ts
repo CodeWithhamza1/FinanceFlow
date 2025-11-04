@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // POST route for deleting income (alternative to DELETE on dynamic routes)
 export async function POST(request: NextRequest) {
@@ -30,9 +31,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify income belongs to user
+    // Verify income belongs to user and get details
     const existing = await query(
-      'SELECT id FROM income WHERE id = ? AND user_id = ?',
+      'SELECT id, amount, description FROM income WHERE id = ? AND user_id = ?',
       [incomeId, auth.userId]
     ) as any[];
 
@@ -43,10 +44,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const income = existing[0];
+
     await query(
       'DELETE FROM income WHERE id = ? AND user_id = ?',
       [incomeId, auth.userId]
     );
+
+    // Log income deletion
+    await logActivity(auth.userId, {
+      action: LogActions.INCOME_DELETE,
+      entityType: 'income',
+      entityId: incomeId.toString(),
+      description: `Deleted income entry: $${parseFloat(income.amount).toFixed(2)}${income.description ? ` - ${income.description}` : ''}`,
+      metadata: {
+        amount: parseFloat(income.amount),
+        description: income.description,
+      },
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

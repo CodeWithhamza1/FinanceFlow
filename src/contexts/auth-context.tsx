@@ -101,7 +101,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Log logout before clearing user
+    if (user) {
+      try {
+        await api.post('/api/logs', {
+          action: 'LOGOUT',
+          description: `User logged out: ${user.email}`,
+        });
+      } catch (e) {
+        // Silently fail - logging should not break logout
+        console.error('Failed to log logout:', e);
+      }
+    }
+    
     setAuthToken(null);
     setUser(null);
     toast({ title: 'Success', description: 'Logged out successfully!' });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // PUT - Update category
 export async function PUT(
@@ -18,9 +19,9 @@ export async function PUT(
     const { id } = await params;
     const categoryId = parseInt(id);
 
-    // Verify category belongs to user
+    // Verify category belongs to user and get old values
     const existing = await query(
-      'SELECT id FROM categories WHERE id = ? AND user_id = ?',
+      'SELECT id, name, icon FROM categories WHERE id = ? AND user_id = ?',
       [categoryId, auth.userId]
     ) as any[];
 
@@ -31,10 +32,30 @@ export async function PUT(
       );
     }
 
+    const oldCategory = existing[0];
+
     await query(
       'UPDATE categories SET name = ?, icon = ? WHERE id = ? AND user_id = ?',
       [name, icon, categoryId, auth.userId]
     );
+
+    // Log category update
+    await logActivity(auth.userId, {
+      action: LogActions.CATEGORY_UPDATE,
+      entityType: 'category',
+      entityId: categoryId.toString(),
+      description: `Updated category: ${name} (${icon})`,
+      metadata: {
+        old: {
+          name: oldCategory.name,
+          icon: oldCategory.icon,
+        },
+        new: {
+          name,
+          icon,
+        },
+      },
+    }, request);
 
     return NextResponse.json({ id: categoryId.toString(), name, icon });
   } catch (error: any) {
@@ -67,9 +88,9 @@ export async function DELETE(
     const { id } = await params;
     const categoryId = parseInt(id);
 
-    // Verify category belongs to user
+    // Verify category belongs to user and get details
     const existing = await query(
-      'SELECT id FROM categories WHERE id = ? AND user_id = ?',
+      'SELECT id, name, icon FROM categories WHERE id = ? AND user_id = ?',
       [categoryId, auth.userId]
     ) as any[];
 
@@ -80,10 +101,24 @@ export async function DELETE(
       );
     }
 
+    const category = existing[0];
+
     await query(
       'DELETE FROM categories WHERE id = ? AND user_id = ?',
       [categoryId, auth.userId]
     );
+
+    // Log category deletion
+    await logActivity(auth.userId, {
+      action: LogActions.CATEGORY_DELETE,
+      entityType: 'category',
+      entityId: categoryId.toString(),
+      description: `Deleted category: ${category.name} (${category.icon})`,
+      metadata: {
+        name: category.name,
+        icon: category.icon,
+      },
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error) {

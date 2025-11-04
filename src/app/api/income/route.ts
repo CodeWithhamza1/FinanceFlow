@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // GET - Fetch user's income entries
 export async function GET(request: NextRequest) {
@@ -70,6 +71,21 @@ export async function POST(request: NextRequest) {
       'INSERT INTO income (user_id, amount, description, date) VALUES (?, ?, ?, ?)',
       [auth.userId, amount, description || null, new Date(date)]
     ) as any;
+
+    const incomeId = result.insertId.toString();
+
+    // Log income creation
+    await logActivity(auth.userId, {
+      action: LogActions.INCOME_CREATE,
+      entityType: 'income',
+      entityId: incomeId,
+      description: `Created income entry: $${amount.toFixed(2)}${description ? ` - ${description}` : ''}`,
+      metadata: {
+        amount,
+        description: description || null,
+        date,
+      },
+    }, request);
 
     const inserted = await query(
       'SELECT id, amount, description, date FROM income WHERE id = ?',

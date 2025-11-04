@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions } from '@/lib/logger';
 
 // GET - Get user profile
 export async function GET(request: NextRequest) {
@@ -49,22 +50,38 @@ export async function PUT(request: NextRequest) {
 
     const { displayName, currency, photoURL } = await request.json();
 
+    // Get old values for logging
+    const oldUser = await query(
+      'SELECT display_name, currency, photo_url FROM users WHERE id = ?',
+      [auth.userId]
+    ) as any[];
+
     const updateFields: string[] = [];
     const params: any[] = [];
+    const changes: string[] = [];
 
     if (displayName !== undefined) {
       updateFields.push('display_name = ?');
       params.push(displayName);
+      if (oldUser[0]?.display_name !== displayName) {
+        changes.push(`Display name: "${oldUser[0]?.display_name || 'None'}" → "${displayName}"`);
+      }
     }
 
     if (currency !== undefined) {
       updateFields.push('currency = ?');
       params.push(currency);
+      if (oldUser[0]?.currency !== currency) {
+        changes.push(`Currency: ${oldUser[0]?.currency || 'None'} → ${currency}`);
+      }
     }
 
     if (photoURL !== undefined) {
       updateFields.push('photo_url = ?');
       params.push(photoURL);
+      if (oldUser[0]?.photo_url !== photoURL) {
+        changes.push('Profile picture updated');
+      }
     }
 
     if (updateFields.length === 0) {
@@ -79,6 +96,33 @@ export async function PUT(request: NextRequest) {
       `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`,
       params
     );
+
+    // Log profile update
+    if (changes.length > 0) {
+      const action = currency !== undefined && oldUser[0]?.currency !== currency
+        ? LogActions.CURRENCY_CHANGE
+        : photoURL !== undefined && oldUser[0]?.photo_url !== photoURL
+        ? LogActions.AVATAR_UPLOAD
+        : LogActions.PROFILE_UPDATE;
+
+      await logActivity(auth.userId, {
+        action,
+        entityType: 'user',
+        entityId: auth.userId.toString(),
+        description: `Updated profile: ${changes.join(', ')}`,
+        metadata: {
+          changes,
+          old: {
+            displayName: oldUser[0]?.display_name,
+            currency: oldUser[0]?.currency,
+          },
+          new: {
+            displayName,
+            currency,
+          },
+        },
+      }, request);
+    }
 
     const users = await query(
       'SELECT id, email, display_name, photo_url, currency FROM users WHERE id = ?',

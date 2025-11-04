@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { hashPassword, generateToken } from '@/lib/auth';
 import { defaultCategories, initialBudgets } from '@/lib/data';
+import { logActivity, LogActions } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,6 +59,21 @@ export async function POST(request: NextRequest) {
     const token = generateToken({
       userId,
       email,
+    });
+
+    // Log signup activity
+    await logActivity(userId, {
+      action: LogActions.SIGNUP,
+      description: `New user registered: ${email}`,
+      metadata: {
+        email,
+        displayName: displayName || null,
+      },
+    }, {
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+      headers: {
+        'user-agent': request.headers.get('user-agent') || undefined,
+      },
     });
 
     return NextResponse.json({

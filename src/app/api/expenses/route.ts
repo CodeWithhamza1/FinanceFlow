@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions, getRequestInfo } from '@/lib/logger';
 
 // GET - Fetch user's expenses
 export async function GET(request: NextRequest) {
@@ -76,6 +77,22 @@ export async function POST(request: NextRequest) {
       'INSERT INTO expenses (user_id, description, amount, category, date) VALUES (?, ?, ?, ?, ?)',
       [auth.userId, description, amount, category, new Date(date)]
     ) as any;
+
+    const expenseId = result.insertId.toString();
+
+    // Log expense creation
+    await logActivity(auth.userId, {
+      action: LogActions.EXPENSE_CREATE,
+      entityType: 'expense',
+      entityId: expenseId,
+      description: `Created expense: ${description} (${category}) - $${amount.toFixed(2)}`,
+      metadata: {
+        description,
+        amount,
+        category,
+        date,
+      },
+    }, request);
 
     const insertedExpense = await query(
       'SELECT id, user_id as userId, description, amount, category, date, created_at as createdAt FROM expenses WHERE id = ?',

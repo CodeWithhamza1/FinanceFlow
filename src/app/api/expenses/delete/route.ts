@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { authenticateRequest, unauthorizedResponse } from '@/lib/middleware';
+import { logActivity, LogActions, getRequestInfo } from '@/lib/logger';
 
 // POST route for deleting expenses (alternative to DELETE on dynamic routes)
 export async function POST(request: NextRequest) {
@@ -30,9 +31,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify expense belongs to user
+    // Verify expense belongs to user and get details for logging
     const existing = await query(
-      'SELECT id FROM expenses WHERE id = ? AND user_id = ?',
+      'SELECT id, description, amount, category FROM expenses WHERE id = ? AND user_id = ?',
       [expenseId, auth.userId]
     ) as any[];
 
@@ -43,10 +44,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const expense = existing[0];
+
     await query(
       'DELETE FROM expenses WHERE id = ? AND user_id = ?',
       [expenseId, auth.userId]
     );
+
+    // Log expense deletion
+    await logActivity(auth.userId, {
+      action: LogActions.EXPENSE_DELETE,
+      entityType: 'expense',
+      entityId: expenseId.toString(),
+      description: `Deleted expense: ${expense.description} (${expense.category}) - $${parseFloat(expense.amount).toFixed(2)}`,
+      metadata: {
+        description: expense.description,
+        amount: parseFloat(expense.amount),
+        category: expense.category,
+      },
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
