@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public profile information.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture."
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "budget": {
+      "title": "Budget",
+      "description": "Defines a spending limit for a specific category.",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        }
+      },
+      "required": ["category", "amount"]
+    },
+    "expense": {
+      "title": "Expense",
+      "description": "Represents a single expense transaction.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "category": {
+          "type": "string"
+        }
+      },
+      "required": ["userId", "date", "description", "amount", "category"]
+    },
+    "category": {
+      "title": "Category",
+      "description": "Represents a spending category.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        }
+      },
+      "required": ["name", "icon"]
+    }
+  },
+  "auth": {
+    "providers": ["email", "google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/userProfile"
+      },
+      "description": "Stores public user profile information."
+    },
+    "/budgets/{userId}": {
+      "schema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"budgets\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"$ref\": \"#/entities/budget\"\n      }\n    }\n  }\n}",
+      "description": "Stores the user-defined budgets for different categories."
+    },
+    "/expenses/{expenseId}": {
+      "schema": {
+        "$ref": "#/entities/expense"
+      },
+      "description": "Stores individual expense transactions for all users."
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": {
+        "$ref": "#/entities/category"
+      },
+      "description": "Stores user-defined spending categories."
+    }
+  }
+}

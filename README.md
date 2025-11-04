@@ -707,8 +707,8 @@ Ensure all environment variables are set:
 
 ## License
 
-GNU GENERAL PUBLIC LICENSE
+This project is private and proprietary.
 
 ---
 
-**Built with ❤️ using Next.js, MySQL**
+**Built with ❤️ using Next.js, MySQL, and Google AI**

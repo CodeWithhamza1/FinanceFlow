@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Users can read and write their own profile and category data
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /categories/{categoryId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Users can read and write their own budget data
+    match /budgets/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Users can create expenses
+    // Users can read, update, or delete their own expenses
+    match /expenses/{expenseId} {
+      allow create: if request.auth != null && isOwner(request.resource.data.userId);
+      allow read, update, delete: if resource.data.userId == request.auth.uid;
+    }
+  }
+}
